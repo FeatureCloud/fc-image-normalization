@@ -1,0 +1,8 @@
+fc_image_normalization:
+  local_dataset:
+    train: "train.npy"
+    test: "test.npy"
+  method: "variance"
+  logic:
+    mode: "file"
+    dir: "."
