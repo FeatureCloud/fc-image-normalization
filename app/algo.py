@@ -7,6 +7,9 @@ from sklearn.utils.validation import check_is_fitted
 
 
 class Client(LogisticRegression):
+    """
+    Comment here
+    """
     beta_global = None
     classes_ = None
     coef_ = None
