@@ -24,33 +24,29 @@ import os
 
 class CustomLogic(AppLogic):
     """ Subclassing AppLogic for overriding specific methods
-        to implement the deep learning application.
+        to implement the Image Normalization application.
 
     Attributes
     ----------
     train_filename: str
     test_filename: str
-    pred_output: str
-        output directory for the sake of writing the results!
     stats: dict
         statistics of the dataset.
+    method: str
 
     Methods
     -------
     read_config(config_file)
     read_input(path)
-    local_preprocess(model, features, labels, init_params, mean_std)
-    global_preprocess(model, features, labels, mean_std)
-    local_computation(model, parameters)
-    global_aggregation(model, parameters):
-    write_results(model, parameters, output_path):
+    local_preprocess(x_train, x_test, global_stats)
+    global_aggregation(stats)
+    write_results(train_set, test_set, output_path)
     """
 
     def __init__(self):
         super().__init__()
         self.train_filename = None
         self.test_filename = None
-        self.pred_output = None
         self.stats = {}
         self.method = None  # For later use if other methods are implemented!
 
@@ -110,6 +106,16 @@ logic = CustomLogic()
 
 
 def read_file(path):
+    """ load a numpy file and compute mean and std. for each channel
+
+    Parameters
+    ----------
+    path: str
+
+    Returns
+    -------
+
+    """
     if os.path.exists(path):
         x, y = np.load(path, allow_pickle=True)
         x = np.array(list(x))
@@ -126,6 +132,17 @@ def read_file(path):
 
 
 def average(stats, n_samples):
+    """ Weighted averages of statistics using number of samples
+
+    Parameters
+    ----------
+    stats: list
+    n_samples: list
+
+    Returns
+    -------
+
+    """
     print(stats)
     total = np.sum(n_samples)
     avg = None

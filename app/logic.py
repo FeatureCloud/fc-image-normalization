@@ -40,24 +40,17 @@ class AppLogic:
     clients:
     data_incoming: list
     data_outgoing: list
-    thread:
     iteration: int
     progress: str
     INPUT_DIR: str
     OUTPUT_DIR: str
-    models: set
     mode: str
     dir: str
     splits: dict
     test_splits: dict
-    parameters: dict
-    mean_std: dict
+    global_stats: dict
     iter_counter: int
     workflows_states: dict
-    coordinator_class: ClientModels
-    client_class: ClientModels
-    init_params_from_server: dict
-    max_iter_reached: bool
     states: dict
 
     Methods
@@ -71,11 +64,9 @@ class AppLogic:
     broadcast(data)
     read_config(config_file)
     read_input(path)
-    local_preprocess(model, features, labels, init_from_server)
-    global_preprocess(model, features, labels, mean_std)
-    local_computation(model, parameters)
-    global_aggregation(model, parameters)
-    write_results(model, parameters, output_path)
+    local_preprocess(x_train, x_test, global_stats)
+    global_aggregation(stats)
+    write_results(train_set, test_set, output_path)
     lazy_initialization(mode, dir)
     finalize_config()
 
@@ -314,10 +305,7 @@ class AppLogic:
 
     def read_input(self, path):
         """ should be overridden
-        called for both clients and coordinator.
-        to read train set
-        coordinator also reads the test set
-        for evaluation purpose after aggregation step!
+        read train set and, if it is available, test set
         for reading input files, path to the file can made
         in this way:
         train_path = path + "/" + self.train_filename
@@ -346,9 +334,7 @@ class AppLogic:
 
     def local_preprocess(self, x_train, x_test, global_stats):
         """ should be overridden!
-            called for clients
-            to initialized their models from globally shared wights.
-            Also, to normalize their data based on the global statistics!
+            called for clients to normalized their data based on global statistics.
 
         Parameters
         ----------
@@ -394,8 +380,7 @@ class AppLogic:
 
     def write_results(self, train_set, test_set, output_path):
         """ should be overridden!
-            writing results, e.g., predictions of the test set,
-             into output directory.
+            writing normalized data.
 
         Parameters
         ----------
