@@ -1,5 +1,5 @@
 """
-    FeatureCloud DeepLearning Application
+    FeatureCloud Image Normalization Application
 
     Copyright 2021 Mohammad Bakhtiari. All Rights Reserved.
 
