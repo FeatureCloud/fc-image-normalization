@@ -1,7 +1,6 @@
-FROM python:3.7-slim-stretch
+FROM python:3.8-buster
 
-RUN apt-get update && apt-get install -y \
-    supervisor nginx
+RUN apt-get update && apt-get install -y supervisor nginx
 
 RUN pip3 install --upgrade pip
 
@@ -13,8 +12,6 @@ COPY requirements.txt /app/requirements.txt
 RUN pip3 install -r ./app/requirements.txt
 
 COPY . /app
-
-
 
 EXPOSE 9000 9001
 

@@ -1,7 +1,1 @@
-.idea/
-venv
-test
-app/__pycache__/
-*pyc
-eval.py
-test_federated.py
+.idea

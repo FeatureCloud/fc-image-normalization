@@ -1,6 +1,0 @@
-venv
-.gitignore
-test
-evaluation
-test_federated.py
-eval.py

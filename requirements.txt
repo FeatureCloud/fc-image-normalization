@@ -1,4 +1,10 @@
 bottle
-numpy
 jsonpickle
+joblib
+numpy
 bios
+pydot
+pyyaml
+matplotlib
+seaborn
+FeatureCloud==0.0.4
