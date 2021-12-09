@@ -12,7 +12,10 @@
     limitations under the License.
 """
 import numpy as np
-from utils import load_numpy
+from FeatureCloud.engine.app import LogLevel, app
+from FeatureCloud.api.http_ctrl import api_server
+from FeatureCloud.api.http_web import web_server
+
 from bottle import Bottle
 
 
