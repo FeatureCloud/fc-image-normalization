@@ -13,11 +13,10 @@
 """
 import copy
 import os.path
-from FeatureCloud.engine.app import app_state, AppState, Role, LogLevel, SMPCOperation
-from FeatureCloud.engine.app import State as op_state
+from FeatureCloud.app.engine.app import app_state, AppState, Role, LogLevel, SMPCOperation
+from FeatureCloud.app.engine.app import State as op_state
 import numpy as np
-from utils import save_numpy
-from .utils import read_file
+from utils import read_file, save_numpy, to_np
 import ConfigState
 
 name = 'image_normalization'
@@ -48,28 +47,32 @@ class LocalStats(ConfigState.State):
     def read_files(self):
         x_train, y_train, x_test, y_test, local_stats = [], [], [], [], []
         splits = zip(self.load('input_files')['train'], self.load('input_files')['test'])
-        for split_train_file, split_test_file in splits:
+        for counter, (split_train_file, split_test_file) in enumerate(splits):
             if not os.path.isfile(split_train_file):
                 self.log(f"File not found:\n{split_train_file}", LogLevel.ERROR)
                 self.update(state=op_state.ERROR)
             x, y, mean_train, std_train = read_file(split_train_file,
-                                                                self.config['local_dataset']['target_value'])
+                                                    self.config['local_dataset']['target_value'])
             n_train_samples = len(x)
+            self.log(f"locan set [{counter}]")
+            self.log(f"Number of rows: {n_train_samples}\nFeature shape: {x.shape[1:]}\n Unique labels: {np.unique(y)}")
+
             mean_train *= n_train_samples
             std_train *= n_train_samples
+            self.log(f"Local train mean: {len(mean_train)}\nLocal train std: {len(std_train)}")
             x_train.append(x)
             y_train.append(y)
             if not os.path.isfile(split_test_file):
                 self.log(f"File not found:\n{split_test_file}"
-                             f"\nNo test set is provided!", LogLevel.DEBUG)
+                         f"\nNo test set is provided!", LogLevel.DEBUG)
                 mean_test, std_test = copy.deepcopy(mean_train), copy.deepcopy(std_train)
                 x, y = [], []
             else:
-                x, y, mean_test, std_test = read_file(split_test_file)
+                x, y, mean_test, std_test = read_file(split_test_file, self.config['local_dataset']['target_value'])
             n_test_samples = len(x)
             mean_test *= n_test_samples
             std_test *= n_test_samples
-
+            self.log(f"Local test mean: {len(mean_train)}\nLocal test std: {len(std_train)}")
             x_test.append(x)
             y_test.append(y)
             local_stats.append([[n_train_samples, mean_train.tolist(), std_train.tolist()],
@@ -87,12 +90,19 @@ class GlobalStats(AppState):
         self.register_transition('WriteResults', Role.COORDINATOR)
 
     def run(self):
-        aggregated_stats = self.aggregate_data(operation=SMPCOperation.ADD, use_smpc=self.load('smpc_used'))
-        print(aggregated_stats)
+        if self.load('smpc_used'):
+            aggregated_data = self.await_data(n=1, unwrap=True, is_json=True)
+        else:
+            data = self.gather_data(is_json=False)
+            np_data = to_np(data)
+            aggregated_data = np_data[0]
+            for item in np_data[1:]:
+                aggregated_data += item
+        self.log(aggregated_data)
         self.update(progress=0.4)
         global_stats = []
         if self.load('method') == "variance":
-            for train_split, test_split in aggregated_stats:
+            for train_split, test_split in aggregated_data:
                 n_train_samples, train_mean, train_std = train_split
                 n_test_samples, test_mean, test_std = test_split
                 if n_train_samples != 0:
@@ -108,10 +118,11 @@ class GlobalStats(AppState):
                     test_mean = np.array(test_mean) * 0
                     test_std = np.array(test_std) * 0
                 global_stats.append([train_mean, train_std, test_mean, test_std])
+            self.log(f"Global stats: {global_stats}")
             self.broadcast_data(data=global_stats)
         else:
             self.log(f"{self.load('method')} was not implemented as a normalization method.",
-                         LogLevel.ERROR)
+                     LogLevel.ERROR)
             self.update(state=op_state.ERROR)
         self.update(progress=0.5)
         return 'WriteResults'
@@ -136,6 +147,7 @@ class WriteResults(AppState):
         return 'terminal'
 
     def local_normalization(self, x_train, x_test, global_stats):
+        self.log(f"Split stats: {global_stats}")
         if self.load('method') == "variance":
             normalized_x_train = np.subtract(x_train, global_stats[0]) / global_stats[1]
             if np.size(x_test) != 0:
@@ -148,14 +160,16 @@ class WriteResults(AppState):
         self.update(state=op_state.ACTION)
 
     def write_results(self, x_train, x_test, i):
-        save_numpy(file_name=self.load('output_files')['train'][i],
-                   features=x_train,
-                   labels=self.load('y_train')[i],
-                   target=self.load('target_value'),
-                   )
+        file_name = self.load('output_files')['train'][i]
+        format = file_name.strip().split(".")[-1].strip()
+        if format == 'npy':
+            save_numpy(file_name, x_train, self.load('y_train')[i], self.load('target_value'))
+        else:  # format == 'npz':
+            np.savez_compressed(file_name, data=x_train, targets=self.load('y_train')[i])
+
+        file_name = self.load('output_files')['test'][i]
         if np.size(x_test) != 0:
-            save_numpy(file_name=self.load('output_files')['test'][i],
-                       features=x_test,
-                       labels=self.load('y_test')[i],
-                       target=self.load('target_value')
-                       )
+            if format == 'npy':
+                save_numpy(file_name, x_test, self.load('y_test')[i], self.load('target_value'))
+            else:  # format == 'npz':
+                np.savez_compressed(file_name, data=x_test, targets=self.load('y_test')[i])

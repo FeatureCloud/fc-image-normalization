@@ -12,9 +12,9 @@
     limitations under the License.
 """
 import numpy as np
-from FeatureCloud.engine.app import LogLevel, app
-from FeatureCloud.api.http_ctrl import api_server
-from FeatureCloud.api.http_web import web_server
+from FeatureCloud.app.engine.app import LogLevel, app, SMPCOperation
+from FeatureCloud.app.api.http_ctrl import api_server
+from FeatureCloud.app.api.http_web import web_server
 
 from bottle import Bottle
 
@@ -53,20 +53,48 @@ def read_file(filename, target):
     Returns
     -------
     """
-    data = load_numpy(filename)
-    if target == "same-sep":
-        x, y = data
-        x = np.array(list(x))
-    elif target == 'same-last':
-        x = [s[-1] for s in data]
-        y = [s[-1] for s in data]
-    elif '.npy' in target or '.npz' in target:
-        x = data
-        y = np.load(target, allow_pickle=True)
-    x = np.array(list(x))
-    sample_shape = x[0].shape[1:]
+    format = filename.strip().split(".")[-1].strip()
+    if format == 'npz':
+        ds = np.load(filename)
+        data, targets = ds['data'], ds['targets']
+    else:
+        np_file = load_numpy(filename)
+        if target == "same-sep":
+            data, targets = np_file
+            data = np.array(list(data))
+        elif target == 'same-last':
+            data = [s[-1] for s in np_file]
+            targets = np.array([s[-1] for s in np_file])
+        elif '.npy' in target or '.npz' in target:
+            data = np_file
+            targets = np.load(target, allow_pickle=True)
+    sample_shape = data[0].shape[1:]
     if min(sample_shape) > 3:
-        x = np.expand_dims(x, axis=-1)
+        x = np.expand_dims(data, axis=-1)
     mean = np.mean(x, axis=tuple(range(x.ndim - 1)))
     std = np.std(x, axis=tuple(range(x.ndim - 1)))
-    return x, y.tolist(), mean, std
+    return data, targets.tolist(), mean, std
+
+
+def save_numpy(file_name, features, labels, target):
+    format = file_name.strip().split(".")[1].lower()
+    save = {"npy": np.save, "npz": np.savez_compressed}
+    if target == "same-sep":
+        save[format](file_name, np.array([features, labels]))
+    elif target == "same-last":
+        samples = [np.append(features[i], labels[i]) for i in range(features.shape[0])]
+        save[format](file_name, samples)
+    elif target.strip().split(".")[1].lower() == 'npy':
+        np.save(file_name, features)
+        np.save(target, labels)
+    elif target.strip().split(".")[1].lower() in 'npz':
+        np.savez_compressed(file_name, features)
+        np.savez_compressed(target, labels)
+    else:
+        return None
+
+
+def to_np(data):
+    if type(data) is list:
+        return np.array([to_np(item) for item in data])
+    return data
