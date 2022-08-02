@@ -5,9 +5,10 @@ Using the Image Normalization app, users can normalize and/or standardize their 
 This app supports image datasets in NumPy files.
 
 ## Input
+- `.npz`: NpmPy compressed files are supposed to have `data` and `targets` keys for samples and target values.
 - train.npy containing the local training data  
 - test.npy containing the local test data
-`train.npy` and `test.npy` should include same number of samples and the structure should be same as [CrossValidation](../CrossValidation/README.md#input) app.
+`train.npy` and `test.npy` should include the same number of samples, and the structure should be the same as [Data distributor](https://github.com/FeatureCloud/fc-data-distributor) app.
 ## Output
 - train.npy: Normalized training data 
 - test.npy: Normalized test data
@@ -46,4 +47,36 @@ fc_image_normalization:
   result:
     train: train.npy
     test: test.npy
+```
+### Run Image Normalization
+
+#### Prerequisite
+
+To run the Image Normalization application, you should install Docker and FeatureCloud pip package:
+
+```shell
+pip install featurecloud
+```
+
+Then either download the Image Normalization image from featurecloud docker repository:
+
+```shell
+featurecloud app download featurecloud.ai/fc_image_normalization
+```
+
+Or build the app locally:
+
+```shell
+featurecloud app build featurecloud.ai/fc_image_normalization
+```
+
+You can use provided example data or your own data with the desired settings in the `config.yml` file.
+For `.npy` format you should set the `target_value` option to `same_sep`.
+
+#### Running app
+
+You can run fc_image_normalization as a standalone app in the [FeatureCloud test-bed](https://featurecloud.ai/development/test) or [FeatureCloud Workflow](https://featurecloud.ai/projects). You can also run the app using CLI:
+
+```shell
+featurecloud test start --app-image featurecloud.ai/fc_image_normalization --client-dirs './sample/c1,./sample/c2' --generic-dir './sample/generic'
 ```
