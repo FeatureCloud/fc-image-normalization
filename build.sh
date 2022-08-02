@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build . --tag featurecloud.ai/image_normalization
+docker build . --tag featurecloud.ai/fc_image_normalization
