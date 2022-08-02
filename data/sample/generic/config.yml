@@ -1,0 +1,13 @@
+image_normalization:
+  local_dataset:
+    train: data.npz
+    test: data.npz
+    target_value: same-sep
+  method: variance
+  logic:
+    mode: file
+    dir: .
+  use_smpc: false
+  result:
+    train: train.npz
+    test: test.npz
